@@ -1,0 +1,164 @@
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    background: #0e1a2b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  #game-wrap {
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  canvas { display: block; }
+  #mute-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,.85);
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 5;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    transition: transform .1s;
+  }
+  #mute-btn:hover { transform: scale(1.08); }
+  #mute-btn:focus-visible { outline: 3px solid #ffd447; }
+  #fs-btn {
+    position: absolute;
+    top: 10px;
+    right: 58px;
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,.85);
+    font-size: 19px;
+    cursor: pointer;
+    z-index: 5;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    transition: transform .1s;
+  }
+  #fs-btn:hover { transform: scale(1.08); }
+  #fs-btn:focus-visible { outline: 3px solid #ffd447; }
+  #fs-btn[hidden] { display: none; }
+
+  /* ---------- Login / register overlay ---------- */
+  #auth-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: rgba(10,20,35,.82);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #auth-overlay[hidden] { display: none; }
+  #auth-panel {
+    width: 84%;
+    max-width: 300px;
+    background: #f7f0d8;
+    border: 4px solid #b89b4e;
+    border-radius: 18px;
+    padding: 22px 20px 18px;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,.45);
+  }
+  #auth-panel h1 {
+    color: #c98a00;
+    font-size: 26px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 0 rgba(0,0,0,.12);
+  }
+  .auth-sub {
+    color: #857550;
+    font-size: 12.5px;
+    line-height: 1.35;
+    margin-bottom: 14px;
+  }
+  #auth-panel input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 2.5px solid #cabf98;
+    border-radius: 12px;
+    background: #fffdf4;
+    color: #4a3d1e;
+    font: 600 16px 'Segoe UI', Arial, sans-serif;
+  }
+  #auth-panel input:focus { outline: none; border-color: #e0a800; }
+  #auth-msg {
+    min-height: 17px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #c0392b;
+    margin-bottom: 8px;
+  }
+  #auth-msg.ok { color: #4a7c1f; }
+  #auth-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 14px;
+    background: #ffd447;
+    color: #5a4300;
+    font: 800 16px 'Segoe UI', Arial, sans-serif;
+    border-bottom: 4px solid #a87d00;
+    cursor: pointer;
+  }
+  #auth-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+  #auth-btn:disabled { opacity: .6; }
+  #auth-guest {
+    margin-top: 10px;
+    background: none;
+    border: none;
+    color: #857550;
+    font: 600 12.5px 'Segoe UI', Arial, sans-serif;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* ---------- Logged-in player chip ---------- */
+  #user-chip {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.85);
+    border-radius: 20px;
+    padding: 6px 6px 6px 12px;
+    font: 700 13px 'Segoe UI', Arial, sans-serif;
+    color: #3a3220;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  }
+  #user-chip[hidden] { display: none; }
+  #chip-logout {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: #e2554f;
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+    line-height: 1;
+  }

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Flappy Kari</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <button id="mute-btn" aria-label="Toggle sound">🔊</button>
+  <button id="fs-btn" aria-label="Fullscreen">⛶</button>
+  <div id="user-chip" hidden><span id="chip-name"></span><button id="chip-logout" aria-label="Dil nga llogaria">✕</button></div>
+  <canvas id="game"></canvas>
+  <div id="auth-overlay" hidden>
+    <div id="auth-panel">
+      <h1>FLAPPY KARI</h1>
+      <p class="auth-sub">Shkruaj emrin &amp; fjalëkalimin — hyn direkt, ose krijohet llogaria nëse s'ekziston.</p>
+      <input id="auth-user" type="text" maxlength="16" placeholder="Emri i lojtarit"
+             autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input id="auth-pass" type="password" placeholder="Fjalëkalimi (min 6)"
+             autocomplete="current-password">
+      <div id="auth-msg"></div>
+      <button id="auth-btn">HYR / REGJISTROHU</button>
+      <button id="auth-guest">Luaj si mysafir →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load order matters: supabase CDN → data → auth → game → ui (ui boots the game) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="data.js"></script>
+<script src="auth.js"></script>
+<script src="game.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
