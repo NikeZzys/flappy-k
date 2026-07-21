@@ -83,6 +83,7 @@ const save = {
   skins: ['classic'],
   skills: [],
   skin: 'classic',
+  skillEq: '',        // the ONE skill equipped for runs ('' = none)
   level: 0            // highest completed level (0 = none yet)
 };
 let storageOk = true;
@@ -98,10 +99,14 @@ function loadSave() {
       if (Array.isArray(d.skills)) save.skills = d.skills;
       if (typeof d.skin === 'string') save.skin = SKIN_MIGRATE[d.skin] || d.skin;
       if (typeof d.level === 'number') save.level = d.level;
+      if (typeof d.skillEq === 'string') save.skillEq = d.skillEq;
     }
   } catch (e) { storageOk = false; }
   if (!save.skins.includes('classic')) save.skins.push('classic');
   if (!save.skins.includes(save.skin)) save.skin = 'classic';
+  // migrate older saves: default-equip the first owned skill
+  if (!save.skillEq && save.skills.length) save.skillEq = save.skills[0];
+  if (save.skillEq && !save.skills.includes(save.skillEq)) save.skillEq = '';
 }
 // Wipe progress back to defaults — used when going guest / logging out,
 // so one player's data never leaks into another session.
@@ -111,6 +116,7 @@ function resetSave() {
   save.skins = ['classic'];
   save.skills = [];
   save.skin = 'classic';
+  save.skillEq = '';
   save.level = 0;
 }
 function persist() {
@@ -131,7 +137,8 @@ function pipeSpeed() {
   return (Math.min(150 + score * 2.4, 330) + Math.max(0, score - 75) * 0.15) * 0.75;
 }
 function gapForScore() {
-    return 181.7;
+  // constant gap — always the same as at game start
+  return 181.7;
 }
 function movingPipeChance() {
   return 0; // pipes are static now (was up to 65% after score 20)
@@ -147,6 +154,62 @@ muteBtn.addEventListener('click', e => {
   e.stopPropagation();
   muted = !muted;
   muteBtn.textContent = muted ? '🔇' : '🔊';
+  musicEl.muted = muted;   // mute silences the background music too
+});
+
+// ---------- Background music ----------
+const musicBtn = document.getElementById('music-btn');
+const musicPop = document.getElementById('music-pop');
+const musicEl = document.getElementById('bg-music');
+const MUSIC_KEY = 'flappyKariMusic';
+let musicChoice = '';
+try { musicChoice = localStorage.getItem(MUSIC_KEY) || ''; } catch (e) {}
+
+function buildMusicMenu() {
+  const opts = [{ file: '', label: '🔇 Pa muzikë' }].concat(MUSIC_TRACKS);
+  musicPop.innerHTML = '';
+  for (const t of opts) {
+    const b = document.createElement('button');
+    b.className = 'mp-opt' + (musicChoice === t.file ? ' on' : '');
+    b.textContent = t.label;
+    b.addEventListener('click', () => {
+      musicChoice = t.file;
+      try { localStorage.setItem(MUSIC_KEY, musicChoice); } catch (e) {}
+      if (!musicChoice) {
+        musicEl.pause();
+        musicEl.removeAttribute('src');
+      } else {
+        musicEl.src = musicChoice;
+        musicEl.volume = 0.55;
+        musicEl.muted = muted;
+        musicEl.play().catch(() => {});
+      }
+      musicPop.hidden = true;
+      buildMusicMenu();
+    });
+    musicPop.appendChild(b);
+  }
+}
+buildMusicMenu();
+
+musicBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  musicPop.hidden = !musicPop.hidden;
+});
+
+// Autoplay is blocked until the first tap — resume the saved track then
+function resumeMusic() {
+  if (musicChoice && musicEl.paused) {
+    if (!musicEl.src) { musicEl.src = musicChoice; musicEl.volume = 0.55; }
+    musicEl.muted = muted;
+    musicEl.play().catch(() => {});
+  }
+}
+document.addEventListener('pointerdown', e => {
+  if (!musicPop.hidden && !musicPop.contains(e.target) && e.target !== musicBtn) {
+    musicPop.hidden = true;   // tap outside closes the picker
+  }
+  resumeMusic();
 });
 function ensureAudio() {
   if (!audioCtx) {
@@ -197,6 +260,9 @@ let skillCh, debris, banner, shake, beam, readyPop, shieldT, runCoins;
 let mode = 'std';                // 'std' (endless) | 'level'
 let curLevel = 1;
 let levelHits = [];
+let reverseSignT = 0;   // "reverse gravity" notice countdown at level start
+// -1 while playing a reverse-gravity level, +1 otherwise
+const gdir = () => (mode === 'level' && LEVELS[curLevel - 1].reverse) ? -1 : 1;
 const levelTarget = () => LEVELS[curLevel - 1].target;
 
 function openLevels() {
@@ -238,12 +304,9 @@ function reset() {
   deathFlash = 0;
   newBest = false;
   puffs = [];
-  // one use per run for each owned skill
-  skillCh = {
-    blast:  ownsSkill('blast')  ? 1 : 0,
-    shield: ownsSkill('shield') ? 1 : 0,
-    revive: ownsSkill('revive') ? 1 : 0
-  };
+  // only the EQUIPPED skill is active: one use per run
+  skillCh = { blast: 0, shield: 0, revive: 0 };
+  if (save.skillEq && ownsSkill(save.skillEq)) skillCh[save.skillEq] = 1;
   debris = [];
   banner = { text: '', t: 0 };
   shake = 0;
@@ -371,6 +434,16 @@ function tryRescueWorld() {
 // ---------- Shop ----------
 function tryBuyOrEquip(kind, item) {
   if (kind === 'skin') {
+    if (item.soon) {
+      sndDeny();
+      shopMsg = 'Së shpejti! 👀'; shopMsgT = 1.5;
+      return;
+    }
+    if (item.minLevel && save.level < item.minLevel && !save.skins.includes(item.id)) {
+      sndDeny();
+      shopMsg = `I kyçur — kërkon Lv${item.minLevel}!`; shopMsgT = 1.6;
+      return;
+    }
     if (save.skins.includes(item.id)) {
       save.skin = item.id;
       persist();
@@ -389,15 +462,25 @@ function tryBuyOrEquip(kind, item) {
     }
   } else {
     if (save.skills.includes(item.id)) {
-      shopMsg = `E ke — aktivizohet vetë para vdekjes`; shopMsgT = 1.6;
+      if (save.skillEq === item.id) {
+        shopMsg = 'E pajisur tashmë — aktivizohet vetë'; shopMsgT = 1.6;
+      } else {
+        save.skillEq = item.id;          // equip THIS one (only one active)
+        skillCh = { blast: 0, shield: 0, revive: 0 };
+        skillCh[item.id] = 1;
+        persist();
+        shopMsg = `${item.name} u pajis!`; shopMsgT = 1.6;
+      }
       sndPick();
     } else if (save.coins >= item.price) {
       save.coins -= item.price;
       save.skills.push(item.id);
-      skillCh[item.id] = 1;   // ready for the upcoming run
+      save.skillEq = item.id;            // buying equips it right away
+      skillCh = { blast: 0, shield: 0, revive: 0 };
+      skillCh[item.id] = 1;
       persist();
       sndBuy();
-      shopMsg = `${item.name} u ble! 1 përdorim çdo lojë`; shopMsgT = 2.2;
+      shopMsg = `${item.name} u ble & u pajis!`; shopMsgT = 2.2;
     } else {
       sndDeny();
       shopMsg = `Duhen edhe ${item.price - save.coins} monedha!`; shopMsgT = 1.5;
@@ -411,10 +494,11 @@ function flap() {
   ensureAudio();
   if (state === S.START) {
     state = S.PLAYING;
-    bird.vy = FLAP_VY;
+    reverseSignT = (gdir() < 0) ? 2.4 : 0;
+    bird.vy = FLAP_VY * gdir();
     sndFlap();
   } else if (state === S.PLAYING) {
-    bird.vy = FLAP_VY;
+    bird.vy = FLAP_VY * gdir();
     bird.wing = 1;
     sndFlap();
   } else if (state === S.DEAD && deathFlash <= 0 && time > 0.6) {
@@ -580,11 +664,14 @@ function update(dt) {
     groundX = (groundX - spd * dt) % 48;
     cloudX = (cloudX - 12 * dt) % GAME_W;
 
-    bird.vy += GRAVITY * dt;
+    const gd = gdir();
+    bird.vy += GRAVITY * gd * dt;
     bird.y += bird.vy * dt;
     bird.wing = Math.max(0, bird.wing - dt * 4);
-    const target = bird.vy < 0 ? -0.42 : Math.min(1.35, bird.vy / 420);
+    const v = bird.vy * gd;
+    const target = (v < 0 ? -0.42 : Math.min(1.35, v / 420)) * gd;
     bird.rot += (target - bird.rot) * Math.min(1, dt * 9);
+    if (reverseSignT > 0) reverseSignT -= dt;
 
     for (const p of pipes) {
       p.prevX = p.x;

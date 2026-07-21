@@ -162,3 +162,52 @@
     cursor: pointer;
     line-height: 1;
   }
+
+/* ---------- Music picker ---------- */
+#music-btn {
+  position: absolute;
+  top: 10px;
+  right: 106px;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,.85);
+  font-size: 19px;
+  cursor: pointer;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  transition: transform .1s;
+}
+#music-btn:hover { transform: scale(1.08); }
+#music-pop {
+  position: absolute;
+  top: 58px;
+  right: 10px;
+  z-index: 9;
+  background: #f7f0d8;
+  border: 3px solid #b89b4e;
+  border-radius: 14px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.35);
+}
+#music-pop[hidden] { display: none; }
+.mp-opt {
+  border: 2px solid #cabf98;
+  border-radius: 10px;
+  background: #fffdf4;
+  color: #4a3d1e;
+  font: 700 13px 'Segoe UI', Arial, sans-serif;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.mp-opt:hover { border-color: #e0a800; }
+.mp-opt.on {
+  background: #ffd447;
+  border-color: #a87d00;
+  color: #5a4300;
+}

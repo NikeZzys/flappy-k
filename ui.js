@@ -133,6 +133,16 @@ function drawCoin(c) {
 
 // ---------- Bird skins ----------
 function drawColoredBird(pal) {
+  // Fluffy: a ring of soft puffs peeking out around the body
+  if (pal.fluff) {
+    ctx.fillStyle = pal.fluffColor || '#fff';
+    for (let i = 0; i < 11; i++) {
+      const a = (i / 11) * Math.PI * 2 + time * 0.6;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 16, Math.sin(a) * 12, 5.5, 0, 7);
+      ctx.fill();
+    }
+  }
   ctx.fillStyle = pal.body;
   ctx.beginPath();
   ctx.ellipse(0, 0, 18, 14, 0, 0, 7);
@@ -180,6 +190,18 @@ function drawColoredBird(pal) {
   ctx.fill();
   ctx.strokeStyle = 'rgba(150,50,0,.4)';
   ctx.stroke();
+
+  // Hawk: a fierce brow over the eye
+  if (pal.brow) {
+    ctx.strokeStyle = '#2e1a05';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(3, -12);
+    ctx.lineTo(13, -7);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
 }
 
 function drawPhotoHead(img, r) {
@@ -225,7 +247,7 @@ function drawPhotoHead(img, r) {
 
 function drawSkinAt(id) {
   if (photoImgs[id]) drawPhotoHead(photoImgs[id], 19);
-  else drawColoredBird(PALETTES.classic);
+  else drawColoredBird(PALETTES[id] || PALETTES.classic);
 }
 
 function drawBird() {
@@ -344,18 +366,24 @@ function drawHUD() {
 
   drawCoinCounter(22, 26, save.coins);
 
-  // owned skills: icon + charge count (auto-activated, no buttons)
-  let sy = 50;
-  for (const sk of SHOP_SKILLS) {
-    if (!ownsSkill(sk.id)) continue;
+  // equipped skill only: icon + charge (auto-activated, no buttons)
+  if (save.skillEq && ownsSkill(save.skillEq)) {
+    const sk = SHOP_SKILLS.find(x => x.id === save.skillEq);
     const n = skillCh[sk.id];
     ctx.globalAlpha = n > 0 ? 1 : 0.45;
     ctx.font = '17px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText(sk.icon, 14, sy + 6);
-    textOutline(`×${n}`, 38, sy + 6, 15, n > 0 ? '#ffd447' : '#fff', 'left');
+    ctx.fillText(sk.icon, 14, 56);
+    textOutline(`×${n}`, 38, 56, 15, n > 0 ? '#ffd447' : '#fff', 'left');
     ctx.globalAlpha = 1;
-    sy += 24;
+  }
+
+  // reverse-gravity notice at the start of levels 3 & 4
+  if (reverseSignT > 0) {
+    const a = Math.min(1, reverseSignT / 0.5);
+    ctx.globalAlpha = a * (0.7 + Math.sin(time * 10) * 0.3);
+    textOutline('🔃 GRAVITET I KUNDËRT!', GAME_W / 2, GAME_H / 2 - 90, 24, '#ff9df0', 'center', GAME_W - 30);
+    ctx.globalAlpha = 1;
   }
 
   if (shieldT > 0) {
@@ -377,8 +405,8 @@ function drawMenu() {
   ctx.fillStyle = 'rgba(10,20,35,.75)';
   ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-  const pw = 356, ph = 490;
-  const px = (GAME_W - pw) / 2, py = 50;
+  const pw = 356, ph = Math.min(560, GAME_H - 100);
+  const px = (GAME_W - pw) / 2, py = Math.max(40, (GAME_H - ph) / 2);
   ctx.fillStyle = '#f7f0d8';
   roundRect(px, py, pw, ph, 18);
   ctx.fill();
@@ -423,12 +451,18 @@ function drawMenu() {
   }
 
   const items = menuTab === 'skins' ? SHOP_SKINS : SHOP_SKILLS;
-  const rowH = 82, rx = px + 12, rw = pw - 24;
+  const rx = px + 12, rw = pw - 24;
+  // skins list is long now — shrink rows so everything fits in the panel
+  const rowH = menuTab === 'skins'
+    ? Math.max(52, Math.floor((ph - 116) / items.length))
+    : 82;
   let ry = py + 104;
 
   for (const it of items) {
     const owned = menuTab === 'skins' ? save.skins.includes(it.id) : save.skills.includes(it.id);
-    const equipped = menuTab === 'skins' && save.skin === it.id;
+    const equipped = menuTab === 'skins' ? save.skin === it.id : save.skillEq === it.id;
+    const lockedLv = menuTab === 'skins' && it.minLevel && save.level < it.minLevel && !owned;
+    const blurred = menuTab === 'skins' && (it.soon || lockedLv);
 
     ctx.fillStyle = equipped ? '#fff3c4' : '#fffdf4';
     roundRect(rx, ry, rw, rowH - 8, 12);
@@ -437,15 +471,27 @@ function drawMenu() {
     ctx.lineWidth = equipped ? 3 : 2;
     ctx.stroke();
 
-    // preview
+    // preview (locked / coming-soon skins render blurry)
     ctx.save();
     ctx.translate(rx + 36, ry + (rowH - 8) / 2);
     if (menuTab === 'skins') {
       const savedWing = bird.wing;
       bird.wing = (Math.sin(time * 6) + 1) / 2;
-      ctx.scale(0.95, 0.95);
-      drawSkinAt(it.id);
+      const sc = rowH < 70 ? 0.68 : 0.95;
+      ctx.scale(sc, sc);
+      if (blurred) {
+        try { ctx.filter = 'blur(3px)'; } catch (e) {}
+        ctx.globalAlpha = 0.75;
+      }
+      drawSkinAt(it.soon ? 'classic' : it.id);
+      try { ctx.filter = 'none'; } catch (e) {}
+      ctx.globalAlpha = 1;
       bird.wing = savedWing;
+      if (blurred) {
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔒', 0, 6);
+      }
     } else {
       ctx.font = '30px Arial';
       ctx.textAlign = 'center';
@@ -457,9 +503,12 @@ function drawMenu() {
     const bw = 74, bh = 32;
     const bx = rx + rw - bw - 8, by = ry + (rowH - 8 - bh) / 2;
     let label, bg, fg;
-    if (equipped) { label = 'VESHUR'; bg = '#8bc34a'; fg = '#2c4a10'; }
+    if (menuTab === 'skins' && it.soon) { label = '• • •'; bg = '#c9c2ad'; fg = '#7a745f'; }
+    else if (lockedLv) { label = `🔒 Lv${it.minLevel}`; bg = '#c9c2ad'; fg = '#7a745f'; }
+    else if (equipped && menuTab === 'skins') { label = 'VESHUR'; bg = '#8bc34a'; fg = '#2c4a10'; }
+    else if (equipped) { label = 'PAJISUR'; bg = '#8bc34a'; fg = '#2c4a10'; }
     else if (owned && menuTab === 'skins') { label = 'VISHE'; bg = '#64b5f6'; fg = '#0d3a66'; }
-    else if (owned) { label = 'E BLERE'; bg = '#8bc34a'; fg = '#2c4a10'; }
+    else if (owned) { label = 'PAJISE'; bg = '#64b5f6'; fg = '#0d3a66'; }
     else {
       const afford = save.coins >= it.price;
       label = it.price === 0 ? 'FALAS' : `🪙 ${it.price}`;
@@ -482,12 +531,13 @@ function drawMenu() {
     const textMaxW = bx - textX - 10;
     ctx.textAlign = 'left';
     ctx.fillStyle = '#4a3d1e';
-    ctx.font = 'bold 16px Arial';
+    const small = rowH < 70;
+    ctx.font = `bold ${small ? 14 : 16}px Arial`;
     const nameTxt = menuTab === 'skills' ? `${it.name} (1×/lojë)` : it.name;
-    ctx.fillText(nameTxt, textX, ry + 26, textMaxW);
+    ctx.fillText(nameTxt, textX, ry + (small ? 21 : 26), textMaxW);
     ctx.fillStyle = '#857550';
-    ctx.font = '12px Arial';
-    ctx.fillText(it.desc, textX, ry + 46, textMaxW);
+    ctx.font = `${small ? 11 : 12}px Arial`;
+    ctx.fillText(lockedLv ? `Hapet në Nivelin ${it.minLevel}` : it.desc, textX, ry + (small ? 38 : 46), textMaxW);
 
     menuHits.push({ x: rx, y: ry, w: rw, h: rowH - 8, action: (menuTab === 'skins' ? 'skin:' : 'skill:') + it.id });
     ry += rowH;
@@ -498,7 +548,7 @@ function drawMenu() {
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Aktivizohen VETË një moment para se të vdesësh.', px + pw / 2, ry + 10);
-    ctx.fillText('Vetëm 1 përdorim për çdo lojë.', px + pw / 2, ry + 26);
+    ctx.fillText('Pajis VETËM njërën — 1 përdorim për çdo lojë.', px + pw / 2, ry + 26);
   }
 
   if (shopMsgT > 0) {
@@ -515,8 +565,8 @@ function drawBoard() {
   ctx.fillStyle = 'rgba(10,20,35,.75)';
   ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-  const pw = 356, ph = 490;
-  const px = (GAME_W - pw) / 2, py = 50;
+  const pw = 356, ph = Math.min(560, GAME_H - 100);
+  const px = (GAME_W - pw) / 2, py = Math.max(40, (GAME_H - ph) / 2);
   ctx.fillStyle = '#f7f0d8';
   roundRect(px, py, pw, ph, 18);
   ctx.fill();
@@ -664,8 +714,8 @@ function drawLevels() {
     ctx.fillRect(0, 0, GAME_W, GAME_H);
   }
 
-  const pw = 356, ph = 490;
-  const px = (GAME_W - pw) / 2, py = 50;
+  const pw = 356, ph = Math.min(560, GAME_H - 100);
+  const px = (GAME_W - pw) / 2, py = Math.max(40, (GAME_H - ph) / 2);
   // Panel stays translucent so the background art shows through
   ctx.fillStyle = roadmapBgOk ? 'rgba(20,30,45,.25)' : '#f7f0d8';
   roundRect(px, py, pw, ph, 18);
@@ -749,7 +799,8 @@ function drawLevels() {
 
     // caption under the playable level
     if (playable) {
-      textOutline(done ? 'I kaluar — riluaje' : `Cak: ${LEVELS[n - 1].target} pikë`,
+      const lv = LEVELS[n - 1];
+      textOutline((done ? '✔ ' : `Cak: ${lv.target}p`) + (lv.reverse ? ' 🔃' : ''),
                   nd.x, nd.y + r + 20, 13, '#ffefb0');
     }
 
@@ -772,12 +823,15 @@ function drawUI() {
     textOutline('FLAPPY KARI', GAME_W / 2, 120, 44, '#ffd447');
     drawCoinCounter(GAME_W / 2, 158, save.coins, 'left');
     if (save.best > 0) textOutline(`Best: ${save.best}`, GAME_W / 2, 190, 18, '#ffefb0');
-    if (mode === 'level') textOutline(`🗺 Niveli ${curLevel} — arrij ${levelTarget()} pikë`, GAME_W / 2, 218, 16, '#ffd447');
+    if (mode === 'level') {
+      const rev = LEVELS[curLevel - 1].reverse;
+      textOutline(`🗺 Niveli ${curLevel} — arrij ${levelTarget()} pikë${rev ? ' • 🔃' : ''}`, GAME_W / 2, 218, 16, '#ffd447');
+    }
     if (!storageOk) textOutline('⚠ Saving unavailable in this browser', GAME_W / 2, 244, 12, '#ffb0b0');
 
     const pulse = 0.7 + Math.sin(time * 4) * 0.3;
     ctx.globalAlpha = pulse;
-    textOutline(mode === 'level' ? 'Prek për të nisur nivelin' : 'Tap to start', GAME_W / 2, 415, 22);
+    textOutline(mode === 'level' ? 'Prek për të nisur nivelin' : 'Tap to start', GAME_W / 2, GAME_H - 205, 22);
     ctx.globalAlpha = 1;
 
     // Levels button
@@ -793,7 +847,7 @@ function drawUI() {
     ctx.textAlign = 'center';
     ctx.fillText('🗺 NIVELET', lb.x + lb.w / 2, lb.y + 28);
 
-    textOutline('Mblidh monedha • Bli skins & skills poshtë', GAME_W / 2, 512, 13, '#ffefb0');
+    textOutline('Mblidh monedha • Bli skins & skills poshtë', GAME_W / 2, GAME_H - 108, 13, '#ffefb0');
 
     for (const b of MENU_BTNS) {
       ctx.fillStyle = '#ffd447';
@@ -826,7 +880,7 @@ function drawUI() {
     ctx.fillRect(0, 0, GAME_W, GAME_H);
 
     const pw = 300, ph = 230;
-    const px = (GAME_W - pw) / 2, py = 165;
+    const px = (GAME_W - pw) / 2, py = (GAME_H - ph) / 2 - 20;
     ctx.fillStyle = '#f7f0d8';
     roundRect(px, py, pw, ph, 16);
     ctx.fill();
@@ -851,7 +905,7 @@ function drawUI() {
     ctx.fillRect(0, 0, GAME_W, GAME_H);
 
     const pw = 280, ph = 250;
-    const px = (GAME_W - pw) / 2, py = 150;
+    const px = (GAME_W - pw) / 2, py = (GAME_H - ph) / 2 - 25;
     ctx.fillStyle = '#f7f0d8';
     roundRect(px, py, pw, ph, 16);
     ctx.fill();

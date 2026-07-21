@@ -14,7 +14,18 @@
    ============================================================ */
 
 // ---------- Canvas size (used by layout constants below) ----------
-const GAME_W = 400, GAME_H = 620;
+// Width is fixed; height matches the device aspect so the game fills phone
+// screens edge-to-edge (desktop windows fall back to the classic 620).
+const GAME_W = 400;
+const GAME_H = (() => {
+  const iw = Math.max(1, window.innerWidth || 400);
+  const ih = window.innerHeight || 620;
+  let aspect = ih / iw;
+  if (window.screen && window.screen.height > window.screen.width) {
+    aspect = Math.max(aspect, window.screen.height / window.screen.width);
+  }
+  return Math.round(Math.min(900, Math.max(620, GAME_W * aspect)));
+})();
 
 // ---------- Photo skins ----------
 const PHOTOS = {
@@ -31,7 +42,9 @@ for (const id of Object.keys(PHOTOS)) {
 }
 
 const PALETTES = {
-  classic: { body: '#ffd447', belly: '#ffefb0', wing: '#f5a623', eye: '#222' }
+  classic: { body: '#ffd447', belly: '#ffefb0', wing: '#f5a623', eye: '#222' },
+  fluffy:  { body: '#f7b8cd', belly: '#fff5f8', wing: '#f290b4', eye: '#5a2a3c', fluff: true, fluffColor: '#ffffff' },
+  hawk:    { body: '#7a5230', belly: '#d9c7a8', wing: '#4c3018', eye: '#2e1a05', brow: true }
 };
 
 // ---------- Shop ----------
@@ -39,7 +52,10 @@ const SHOP_SKINS = [
   { id: 'classic', name: 'Zogu Tunes', price: 0,   desc: 'Zogu Klasik' },
   { id: 'bledi',   name: 'Buredi',     price: 100, desc: 'Bledi ruhu se ta futi Mreti', photo: true },
   { id: 'bruni',   name: 'Bruni',      price: 100, desc: 'Bruni iu ngul piruni', photo: true },
-  { id: 'miri',    name: 'Miri',       price: 100, desc: 'Miri byth..... e dini vet', photo: true }
+  { id: 'miri',    name: 'Miri',       price: 100, desc: 'Miri byth..... e dini vet', photo: true },
+  { id: 'fluffy',  name: 'Fluffy Bird', price: 250, desc: 'Pupla rozë, zemër e butë', minLevel: 3 },
+  { id: 'hawk',    name: 'Hawk Bird',   price: 500, desc: 'Syri i skifterit s\'fal', minLevel: 4 },
+  { id: 'soon',    name: 'Së shpejti…', price: 0,   desc: 'Diçka po vjen…', soon: true }
 ];
 const SHOP_SKILLS = [
   { id: 'blast',  name: 'Cpim pidhi',     icon: '💥', every: 10, price: 100, desc: 'Auto-shpëtim: vetëm goditje ballore' },
@@ -50,7 +66,7 @@ const SKILL_BY_ID = Object.fromEntries(SHOP_SKILLS.map(s => [s.id, s]));
 
 // ---------- Constants ----------
 const GRAVITY = 1875;      // was 1500, ×1.25
-const FLAP_VY = -630;
+const FLAP_VY = -630;   // was -420, ×1.5
 const PIPE_W = 66;
 const PIPE_SPACING = 230;
 const GROUND_H = 88;
@@ -73,6 +89,16 @@ let roadmapBgOk = false;
 roadmapBg.onload = () => { roadmapBgOk = true; };
 roadmapBg.src = 'roadmap-bg.jpg';
 const LEVELS = [
-  { n: 1, target: 10 }   // Level 1: pass 10 pipes
+  { n: 1, target: 10 },
+  { n: 2, target: 30 },
+  { n: 3, target: 10, reverse: true },   // reverse gravity + reverse jump
+  { n: 4, target: 30, reverse: true }
+];
+
+// ---------- Background music ----------
+const MUSIC_TRACKS = [
+  { file: 'music-1.mp3', label: '🏴\u200d☠️ Pirate Adventure' },
+  { file: 'music-2.mp3', label: '⚔️ Pirates Action' },
+  { file: 'music-3.mp3', label: '🌊 Cursed Coast' }
 ];
 const LEVELS_SHOWN = 5;          // nodes drawn on the roadmap (locked if no content yet)

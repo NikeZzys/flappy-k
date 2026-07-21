@@ -184,6 +184,12 @@ function pushProfile() {
       coins: save.coins,
       level: save.level
     }).then(() => {}, () => {});
+    // Backfill: stamp the account's current level onto ALL of this player's
+    // score rows, so old records show the right level too.
+    // (Needs the scores UPDATE policy — see the SQL in the chat.)
+    sb.from('scores').update({ level: save.level })
+      .eq('user_id', player.id)
+      .then(() => {}, () => {});
   }, 800);
 }
 
