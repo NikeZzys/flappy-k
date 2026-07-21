@@ -131,8 +131,7 @@ function pipeSpeed() {
   return (Math.min(150 + score * 2.4, 330) + Math.max(0, score - 75) * 0.15) * 0.75;
 }
 function gapForScore() {
-  // ×1.15 of previous gap: base 158 → 181.7, floor 112 → 128.8
-  return Math.max(112, 158 - score * 0.8) * 1.15;
+    return 181.7;
 }
 function movingPipeChance() {
   return 0; // pipes are static now (was up to 65% after score 20)

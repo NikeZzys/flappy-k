@@ -50,7 +50,7 @@ const SKILL_BY_ID = Object.fromEntries(SHOP_SKILLS.map(s => [s.id, s]));
 
 // ---------- Constants ----------
 const GRAVITY = 1875;      // was 1500, ×1.25
-const FLAP_VY = -420;
+const FLAP_VY = -630;
 const PIPE_W = 66;
 const PIPE_SPACING = 230;
 const GROUND_H = 88;
